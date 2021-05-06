@@ -1,12 +1,12 @@
 package queue
 
 import (
-	"context"
-	"fmt"
-	"log"
+  "context"
+  "fmt"
+  "log"
 
-	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx"
+  "github.com/gofrs/uuid"
+  "github.com/jackc/pgx/v4/pgxpool"
 )
 
 // CDCAction Action that should be taken based on row changes
@@ -42,7 +42,7 @@ type CDCRunnerAction struct {
 	controllerID uuid.UUID
 	sourceQuery  string
 	schema       string
-	db           *pgx.ConnPool
+	db           *pgxpool.Conn
 	createFunc   func(context.Context, CDCObjectAction) error
 	updateFunc   func(context.Context, CDCObjectAction) error
 	deleteFunc   func(context.Context, CDCObjectAction) error
@@ -73,7 +73,7 @@ func NewCDCRunnerAction(
 	controllerID uuid.UUID,
 	sourceQuery string,
 	schema string,
-	db *pgx.ConnPool,
+	db *pgxpool.Conn,
 	createFunc func(context.Context, CDCObjectAction) error,
 	updateFunc func(context.Context, CDCObjectAction) error,
 	deleteFunc func(context.Context, CDCObjectAction) error,
@@ -105,7 +105,7 @@ func (c CDCRunnerAction) Do() error {
 	if c.limit == 0 {
 		c.limit = 1
 	}
-	objects, err := c.GetChanges(c.limit)
+	objects, err := c.GetChanges(ctx, c.limit)
 
 	if err != nil {
 		return err
@@ -155,13 +155,13 @@ func (c CDCObjectAction) MarkDone(ctx context.Context) error {
 
 	switch c.Action {
 	case CDCActionCreate, CDCActionUpdate:
-		_, err = c.cdcAction.db.Exec(`
+		_, err = c.cdcAction.db.Exec(ctx, `
 INSERT INTO `+c.cdcAction.schema+`.cdc_hash (cdc_controller_id, object_id, hash)
 VALUES($1, $2, $3)
 ON CONFLICT ON CONSTRAINT cdc_hash_controller_object_uq DO
 UPDATE SET hash = EXCLUDED.hash, updated_at = Now()`, c.ControllerID, c.ObjectID, c.Hash)
 	case CDCActionDelete:
-		_, err = c.cdcAction.db.Exec(`
+		_, err = c.cdcAction.db.Exec(ctx, `
 DELETE FROM `+c.cdcAction.schema+`.cdc_hash
 WHERE cdc_controller_id = $1
 AND object_id = $2
@@ -175,7 +175,7 @@ AND hash = $3::uuid`, c.ControllerID, c.ObjectID, c.Hash)
 
 // GetChanges Returns up to 'n' random rows that need updating/creating/deleting
 func (c CDCRunnerAction) GetChanges(
-	n int,
+	ctx context.Context, n int,
 ) ([]CDCObjectAction, error) {
 	// Find all the changes
 	qry := fmt.Sprintf(`
@@ -208,7 +208,7 @@ ORDER BY RANDOM()
 LIMIT %d
 `, c.sourceQuery, c.schema, n)
 
-	rows, err := c.db.Query(qry, c.controllerID)
+	rows, err := c.db.Query(ctx, qry, c.controllerID)
 
 	if err != nil {
 		return []CDCObjectAction{}, err
