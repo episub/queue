@@ -1,0 +1,25 @@
+version: '3'
+
+vars:
+  CONTAINER_NAME: queue_postgres
+
+tasks:
+  docker:start:
+    cmds:
+      - |
+        docker run --rm -d -v $(pwd)/tests:/docker-entrypoint-initdb.d:ro \
+         -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 \
+         --name {{.CONTAINER_NAME}} postgres
+
+  docker:kill:
+    cmds:
+      - docker kill {{.CONTAINER_NAME}}
+
+  tests:
+    cmds:
+      - cmd: go test
+      - task: docker:kill
+    env:
+      PG_CONNSTRING: "user=postgres host=localhost sslmode=disable dbname=postgres"
+      PG_SCHEMA: public
+      PG_TABLE: message_queue

@@ -42,7 +42,13 @@ func TestClearQueue(t *testing.T) {
 			continue
 		}
 
-		err = d.addTask("testClear", "somekey", time.Now(), map[string]interface{}{})
+		err = d.addTask(TaskInit{
+			Key:       "somekey",
+			Name:      "testClear",
+			DoAfter:   time.Now(),
+			CreatedBy: "test_runner",
+			Data:      map[string]interface{}{},
+		})
 
 		if err != nil {
 			t.Error(err)
@@ -76,10 +82,83 @@ func checkLength(d Driver, length int64) error {
 	}
 
 	if length != fetchedLength {
-		return fmt.Errorf("Expected length %d, but had %d", length, fetchedLength)
+		return fmt.Errorf("expected length %d, but had %d", length, fetchedLength)
 	}
 
 	return nil
+}
+
+func TestCountTask(t *testing.T) {
+	for _, d := range drivers {
+		err := d.addTask(TaskInit{
+			Key:       "somekey",
+			Name:      "testCount",
+			DoAfter:   time.Now(),
+			CreatedBy: "test_runner",
+			Data:      map[string]interface{}{},
+		})
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = d.addTask(TaskInit{
+			Key:       "somekey",
+			Name:      "testCount1",
+			DoAfter:   time.Now(),
+			CreatedBy: "test_runner",
+			Data:      map[string]interface{}{},
+		})
+		if err != nil {
+			t.Error(err)
+		}
+
+		totalLength, err := d.getQueueLength()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if totalLength != 2 {
+			t.Errorf("expected 2 tasks got %d", totalLength)
+		}
+
+		taskCount, err := d.getTaskCount("testCount")
+		if err != nil {
+			t.Error(err)
+		}
+
+		if taskCount != 1 {
+			t.Errorf("expected 1 task with the name 'testCount' got %d", taskCount)
+		}
+
+		task, err := d.pop()
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = d.complete(task, "test done")
+		if err != nil {
+			t.Error(err)
+		}
+
+		task, err = d.pop()
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = d.complete(task, "test done")
+		if err != nil {
+			t.Error(err)
+		}
+
+		taskCount, err = d.getTaskCount("testCount")
+		if err != nil {
+			t.Error(err)
+		}
+
+		if taskCount != 0 {
+			t.Errorf("expected 0 task with the name 'testCount' got %d", taskCount)
+		}
+	}
 }
 
 func TestAddTask(t *testing.T) {
@@ -92,7 +171,13 @@ func TestAddTask(t *testing.T) {
 		}
 		taskName := "testMSAddTask"
 
-		err := d.addTask(taskName, taskKey, time.Now(), data)
+		err := d.addTask(TaskInit{
+			Key:       taskKey,
+			Name:      taskName,
+			DoAfter:   time.Now(),
+			CreatedBy: "test_runner",
+			Data:      data,
+		})
 
 		if err != nil {
 			t.Error(err)
@@ -131,7 +216,13 @@ func TestPop(t *testing.T) {
 		}
 
 		// Add a task to test with:
-		err = d.addTask(taskName, taskKey, time.Now(), data)
+		err = d.addTask(TaskInit{
+			Key:       taskKey,
+			Name:      taskName,
+			DoAfter:   time.Now(),
+			CreatedBy: "test_runner",
+			Data:      data,
+		})
 
 		if err != nil {
 			t.Error(err)
@@ -196,7 +287,13 @@ func TestCompleteTask(t *testing.T) {
 
 		// Create tasks:
 		for _, task := range tasks {
-			err = d.addTask(task.Name, task.Key, time.Now(), task.Data)
+			err = d.addTask(TaskInit{
+				Key:       task.Key,
+				Name:      task.Name,
+				DoAfter:   time.Now(),
+				CreatedBy: "test_runner",
+				Data:      task.Data,
+			})
 
 			time.Sleep(100 * time.Millisecond)
 
@@ -294,7 +391,13 @@ func TestPopNotDoneYet(t *testing.T) {
 		// Create the first two tasks:
 		for i := 0; i < 2; i++ {
 			task := tasks[i]
-			err = d.addTask(task.Name, task.Key, time.Now(), task.Data)
+			err = d.addTask(TaskInit{
+				Key:       task.Key,
+				Name:      task.Name,
+				DoAfter:   time.Now(),
+				CreatedBy: "test_runner",
+				Data:      task.Data,
+			})
 
 			time.Sleep(100 * time.Millisecond)
 
@@ -319,7 +422,13 @@ func TestPopNotDoneYet(t *testing.T) {
 
 		// Add the third task:
 
-		err = d.addTask(tasks[2].Name, tasks[2].Key, time.Now(), tasks[2].Data)
+		err = d.addTask(TaskInit{
+			Key:       tasks[2].Key,
+			Name:      tasks[2].Name,
+			DoAfter:   time.Now(),
+			CreatedBy: "test_runner",
+			Data:      tasks[2].Data,
+		})
 		if err != nil {
 			t.Error(err)
 			continue
@@ -376,7 +485,13 @@ func TestCancelTask(t *testing.T) {
 
 		// Create task:
 		for _, task := range tasks {
-			err = d.addTask(task.Name, task.Key, time.Now(), task.Data)
+			err = d.addTask(TaskInit{
+				Key:       task.Key,
+				Name:      task.Name,
+				DoAfter:   time.Now(),
+				CreatedBy: "test_runner",
+				Data:      task.Data,
+			})
 			if err != nil {
 				t.Error(err)
 				continue
@@ -439,7 +554,13 @@ func TestFailTask(t *testing.T) {
 
 		// Create task:
 		for _, task := range tasks {
-			err = d.addTask(task.Name, task.Key, time.Now(), task.Data)
+			err = d.addTask(TaskInit{
+				Key:       task.Key,
+				Name:      task.Name,
+				DoAfter:   time.Now(),
+				CreatedBy: "test_runner",
+				Data:      task.Data,
+			})
 			if err != nil {
 				t.Error(err)
 				continue
@@ -511,7 +632,13 @@ func TestTaskOrders(t *testing.T) {
 
 		// Create the tasks
 		for _, task := range tasks {
-			err = d.addTask(task.Name, task.Key, time.Now(), task.Data)
+			err = d.addTask(TaskInit{
+				Key:       task.Key,
+				Name:      task.Name,
+				DoAfter:   time.Now(),
+				CreatedBy: "test_runner",
+				Data:      task.Data,
+			})
 
 			time.Sleep(100 * time.Millisecond)
 
@@ -556,7 +683,13 @@ func TestTaskRetry(t *testing.T) {
 			continue
 		}
 
-		err = d.addTask("testTaskRetry1", taskKey, time.Now(), map[string]interface{}{})
+		err = d.addTask(TaskInit{
+			Key:       taskKey,
+			Name:      "testTaskRetry1",
+			DoAfter:   time.Now(),
+			CreatedBy: "test_runner",
+			Data:      map[string]interface{}{},
+		})
 
 		if err != nil {
 			t.Error(err)

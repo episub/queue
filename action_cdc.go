@@ -1,12 +1,12 @@
 package queue
 
 import (
-  "context"
-  "fmt"
-  "log"
+	"context"
+	"fmt"
+	"log"
 
-  "github.com/gofrs/uuid"
-  "github.com/jackc/pgx/v4/pgxpool"
+	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // CDCAction Action that should be taken based on row changes

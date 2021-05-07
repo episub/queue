@@ -20,6 +20,14 @@ var (
 	TaskResultRetryFailure TaskResult = "RETRY"
 )
 
+type TaskInit struct {
+	Key       string
+	Name      string
+	DoAfter   time.Time
+	CreatedBy string
+	Data      map[string]interface{} // Storage of information that the action handler can use
+}
+
 // Task A task to be performed
 type Task struct {
 	id         string // Optional internal reference for drivers to keep track of where this particular task was retrieved from.

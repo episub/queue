@@ -17,5 +17,11 @@ type TaskManager struct {
 
 // AddTask Add a task to the queue
 func (tm *TaskManager) AddTask(taskName string, taskKey string, doAfter time.Time, data map[string]interface{}) error {
-	return tm.driver.addTask(taskName, taskKey, doAfter, data)
+	return tm.driver.addTask(TaskInit{
+		Key:       taskKey,
+		Name:      taskName,
+		DoAfter:   doAfter,
+		CreatedBy: "test_runner",
+		Data:      data,
+	})
 }

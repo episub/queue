@@ -12,9 +12,9 @@ func NewSyncManager(driver Driver) SyncManager {
 	var sm SyncManager
 	sm.driver = driver
 	sm.registeredActions = make(map[string]TaskAction)
-	sm.actionStreams = make(map[string]chan (ScheduledAction))
-	sm.taskQueue = make(chan (taskQueueAction))
-	sm.cancel = make(chan (bool))
+	sm.actionStreams = make(map[string]chan ScheduledAction)
+	sm.taskQueue = make(chan taskQueueAction)
+	sm.cancel = make(chan bool)
 	sm.registerMutex = &sync.Mutex{}
 
 	sm.errorHandler = defaultErrorHandler
@@ -31,9 +31,9 @@ type taskQueueAction struct {
 
 // SyncManager is the central process for running actions
 type SyncManager struct {
-	actionStreams     map[string]chan (ScheduledAction)
-	taskQueue         chan (taskQueueAction)
-	cancel            chan (bool)
+	actionStreams     map[string]chan ScheduledAction
+	taskQueue         chan taskQueueAction
+	cancel            chan bool
 	driver            Driver
 	registeredActions map[string]TaskAction
 	registerMutex     *sync.Mutex
@@ -50,7 +50,7 @@ func (s *SyncManager) getStreamQueue(name string) chan ScheduledAction {
 
 	if stream, ok = s.actionStreams[name]; !ok {
 		// No such stream exists, so let's create first
-		stream = make(chan (ScheduledAction))
+		stream = make(chan ScheduledAction)
 		s.actionStreams[name] = stream
 		// Run a goroutine that handles actions from this stream:
 		s.runStream(stream)
@@ -77,7 +77,7 @@ func (s *SyncManager) Run() {
 			action := s.getRegisteredAction(task.Name)
 
 			if action == nil {
-				err = fmt.Errorf("Cancelling task with ID %s because there is no action to handle it", task.id)
+				err = fmt.Errorf("cancelling task with ID %s because there is no action to handle it", task.id)
 				s.errorHandler(err)
 				err = s.driver.cancel(task, err.Error())
 				if err != nil {
@@ -109,7 +109,7 @@ func (s *SyncManager) Run() {
 						s.errorHandler(err)
 					}
 				default:
-					s.errorHandler(fmt.Errorf("Fell through.  Undefined task result %s", result))
+					s.errorHandler(fmt.Errorf("fell through: undefined task result %s", result))
 				}
 			}
 
@@ -126,7 +126,7 @@ func (s *SyncManager) Run() {
 // a Postgres database may be able to run simultaneously.  runStream receives
 // actions on its stream, and blocks on that stream until the action is
 // complete.
-func (s *SyncManager) runStream(stream chan (ScheduledAction)) {
+func (s *SyncManager) runStream(stream chan ScheduledAction) {
 	n := time.Now()
 	go func() {
 		fmt.Printf("Starting a new stream at %s\n", n)
@@ -172,7 +172,8 @@ func (s *SyncManager) runQueue(cancel chan bool) {
 				s.driver.cleanup(task)
 				s.errorHandler(err)
 			} else if err != ErrNoTasks {
-				// We want to wait until this is executed before we begin the task again.  Otherwise "pop" might return the same value, since it's not truly pop'ing
+				// We want to wait until this is executed before we begin the task again.
+				// Otherwise "pop" might return the same value, since it's not truly pop'ing
 
 				reply := make(chan bool)
 				s.taskQueue <- taskQueueAction{Task: task, Done: reply}

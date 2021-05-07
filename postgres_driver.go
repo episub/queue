@@ -29,93 +29,83 @@ func (p PostgresDriver) schemaTable() string {
 func NewPostgresDriver(connString string, dbSchema string, dbTable string) (*PostgresDriver, error) {
 	var err error
 
-	d := &PostgresDriver{
+	p := &PostgresDriver{
 		tableName:  dbTable,
 		schemaName: dbSchema,
 	}
 
-	d.db, err = sql.Open("postgres", connString)
+	p.db, err = sql.Open("postgres", connString)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return d, err
+	return p, err
 }
 
-func (d *PostgresDriver) taskQueryColumns() string {
-	return "a." + d.primaryKey() + ", a.task_key, a.task_name, a.created_at, a.created_by, a.data, a.state"
+func (p *PostgresDriver) taskQueryColumns() string {
+	return "a." + p.primaryKey() + ", a.task_key, a.task_name, a.created_at, a.created_by, a.data, a.state"
 }
 
-func (d *PostgresDriver) primaryKey() string {
-	return d.tableName + "_id"
+func (p *PostgresDriver) primaryKey() string {
+	return p.tableName + "_id"
 }
 
 // clear Removes all entries from the queue.  Be careful.  Generally you should cancel entries rather than delete.
-func (d *PostgresDriver) clear() error {
-	_, err := d.db.Exec(fmt.Sprintf("DELETE FROM %s", d.schemaTable()))
+func (p *PostgresDriver) clear() error {
+	_, err := p.db.Exec(fmt.Sprintf("DELETE FROM %s", p.schemaTable()))
 
 	return err
 }
 
-func (d *PostgresDriver) name() string {
+func (p *PostgresDriver) name() string {
 	return "PostgresDriver"
 }
 
 // AddTask Adds a task to the queue
-func (d *PostgresDriver) addTask(taskName string, taskKey string, doAfter time.Time, data map[string]interface{}) error {
+func (p *PostgresDriver) addTask(taskData TaskInit) error {
 	// Store data as json:
-	dataString, err := json.Marshal(data)
+	dataString, err := json.Marshal(taskData.Data)
 
 	created := time.Now()
 	// Convert
-	_, err = d.db.Exec(`
-INSERT INTO `+d.schemaTable()+`
-	(`+d.primaryKey()+`, data, state, task_key, task_name, created_at, last_attempted, last_attempt_message, do_after)
-VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'Created', $7)`,
+	_, err = p.db.Exec(`
+INSERT INTO `+p.schemaTable()+`
+	(`+p.primaryKey()+`, data, state, task_key, task_name, created_at, last_attempted, last_attempt_message, do_after, created_by)
+VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'Created', $7, $8)`,
 		dataString,
 		"READY",
-		taskKey,
-		taskName,
+		taskData.Key,
+		taskData.Name,
 		created,
 		created,
-		doAfter,
+		taskData.DoAfter,
+		taskData.CreatedBy,
 	)
 
 	return err
 }
 
-// func (d *PostgresDriver) getTask(taskName string) (Task, error) {
-// 	var task Task
-// 	var err error
-//
-// 	query := `SELECT ` + d.taskQueryColumns() + ` FROM ` + d.schemaTable() + ` WHERE task_name = $1 ORDER BY created_at DESC LIMIT 1`
-//
-// 	task, err = d.scanTask(d.db.QueryRow(query))
-//
-// 	return task, err
-// }
-
-func (d *PostgresDriver) cleanup(task Task) {
+func (p *PostgresDriver) cleanup(task Task) {
 	if task.tx != nil {
 		// Possibly already committed/rolled back by this stage.  E.g., if unmarshal in pop() has called commit
 		task.tx.Commit()
 	}
 }
 
-func (d *PostgresDriver) pop() (Task, error) {
+func (p *PostgresDriver) pop() (Task, error) {
 	var task Task
 	var data string
 
-	tx, err := d.db.Begin()
+	tx, err := p.db.Begin()
 	if err != nil {
 		return task, err
 	}
 
 	query := `
 WITH u AS (
-	SELECT ` + d.primaryKey() + `
-	FROM ` + d.schemaTable() + `
+	SELECT ` + p.primaryKey() + `
+	FROM ` + p.schemaTable() + `
 	WHERE (
 		state IN ('` + string(TaskReady) + `')
 		OR (
@@ -128,10 +118,10 @@ WITH u AS (
 	FOR UPDATE SKIP LOCKED
 	LIMIT 1
 )
-UPDATE ` + d.schemaTable() + ` a SET last_attempted=Now(), last_attempt_message='Attempting', state='` + string(TaskRetry) + `'
+UPDATE ` + p.schemaTable() + ` a SET last_attempted=Now(), last_attempt_message='Attempting', state='` + string(TaskRetry) + `'
 FROM u
-WHERE a.` + d.primaryKey() + ` = u.` + d.primaryKey() + `
-RETURNING ` + d.taskQueryColumns()
+WHERE a.` + p.primaryKey() + ` = u.` + p.primaryKey() + `
+RETURNING ` + p.taskQueryColumns()
 
 	err = tx.QueryRow(query).Scan(&task.id, &task.Key, &task.Name, &task.Created, &task.CreatedBy, &data, &task.State)
 	task.tx = tx
@@ -157,42 +147,50 @@ RETURNING ` + d.taskQueryColumns()
 	return task, err
 }
 
-func (d *PostgresDriver) refreshRetry(age time.Duration) error {
+func (p *PostgresDriver) refreshRetry(age time.Duration) error {
 	when := time.Now().Add(-age)
-	_, err := d.db.Exec("UPDATE "+d.schemaTable()+" SET state=$1, last_attempted=$2 WHERE state=$3 AND last_attempted < $4", string(TaskReady), time.Now(), string(TaskRetry), when)
+	_, err := p.db.Exec("UPDATE "+p.schemaTable()+" SET state=$1, last_attempted=$2 WHERE state=$3 AND last_attempted < $4", string(TaskReady), time.Now(), string(TaskRetry), when)
 
 	return err
 }
 
-func (d *PostgresDriver) getQueueLength() (int64, error) {
+func (p *PostgresDriver) getQueueLength() (int64, error) {
 	var length int64
 
-	err := d.db.QueryRow("SELECT count(*) FROM " + d.schemaTable() + " LIMIT 1").Scan(&length)
+	err := p.db.QueryRow("SELECT count(*) FROM " + p.schemaTable() + " LIMIT 1").Scan(&length)
 
 	return length, err
 }
 
-func (d *PostgresDriver) complete(task Task, message string) error {
-	return d.setTaskState(task, TaskDone, message)
+func (p *PostgresDriver) getTaskCount(taskName string) (int64, error) {
+	var length int64
+
+	err := p.db.QueryRow("SELECT count(*) FROM "+p.schemaTable()+" WHERE task_name = $1 AND state != 'CANCELLED' AND state != 'DONE'", taskName).Scan(&length)
+
+	return length, err
 }
 
-func (d *PostgresDriver) cancel(task Task, message string) error {
-	return d.setTaskState(task, TaskCancelled, message)
+func (p *PostgresDriver) complete(task Task, message string) error {
+	return p.setTaskState(task, TaskDone, message)
 }
 
-func (d *PostgresDriver) fail(task Task, message string) error {
-	return d.setTaskState(task, TaskFailed, message)
+func (p *PostgresDriver) cancel(task Task, message string) error {
+	return p.setTaskState(task, TaskCancelled, message)
 }
 
-func (d *PostgresDriver) retry(task Task, message string) error {
-	return d.setTaskState(task, TaskRetry, message)
+func (p *PostgresDriver) fail(task Task, message string) error {
+	return p.setTaskState(task, TaskFailed, message)
 }
 
-func (d *PostgresDriver) setTaskState(task Task, state TaskState, message string) error {
+func (p *PostgresDriver) retry(task Task, message string) error {
+	return p.setTaskState(task, TaskRetry, message)
+}
+
+func (p *PostgresDriver) setTaskState(task Task, state TaskState, message string) error {
 	if task.tx == nil {
 		return fmt.Errorf("Cannot have nil transaction for task")
 	}
-	_, err := task.tx.Exec("UPDATE "+d.schemaTable()+" SET state=$1, last_attempted=$2, last_attempt_message=$3 WHERE "+d.primaryKey()+" = $4", string(state), time.Now(), message, task.id)
+	_, err := task.tx.Exec("UPDATE "+p.schemaTable()+" SET state=$1, last_attempted=$2, last_attempt_message=$3 WHERE "+p.primaryKey()+" = $4", string(state), time.Now(), message, task.id)
 
 	if err != nil {
 		task.tx.Rollback()
@@ -201,7 +199,7 @@ func (d *PostgresDriver) setTaskState(task Task, state TaskState, message string
 	return task.tx.Commit()
 }
 
-func (d *PostgresDriver) scanTask(scanner *sql.Row) (Task, error) {
+func (p *PostgresDriver) scanTask(scanner *sql.Row) (Task, error) {
 	var task Task
 	var data string
 

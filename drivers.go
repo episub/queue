@@ -8,7 +8,7 @@ import (
 // Driver Manages the connection to the background queue to keep track of tasks
 type Driver interface {
 	clear() error // Clears the queue.  Obviously, be careful
-	addTask(taskName string, taskKey string, doAfter time.Time, data map[string]interface{}) error
+	addTask(init TaskInit) error
 	// getTask(taskName string) (Task, error) // Grabs most recent entry for that task name
 	name() string // Returns a name for the driver
 
@@ -30,8 +30,11 @@ type Driver interface {
 	// retry Marks a task as temporarily failed and in need of a retry later
 	retry(task Task, message string) error
 
+	// getQueueLength returns the number of total tasks currently in the queue
 	getQueueLength() (int64, error)
+	// getTaskCount returns the number of active tasks in the queue that have the given name
+	getTaskCount(taskName string) (int64, error)
 }
 
 // ErrNoTasks Returned when there are no tasks available in the queue
-var ErrNoTasks = errors.New("No tasks available")
+var ErrNoTasks = errors.New("no tasks available")
