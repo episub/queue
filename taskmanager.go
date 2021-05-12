@@ -25,3 +25,7 @@ func (tm *TaskManager) AddTask(taskName string, taskKey string, doAfter time.Tim
 		Data:      data,
 	})
 }
+
+func (tm *TaskManager) GetTaskCount(taskName string) (int64, error) {
+	return tm.driver.getTaskCount(taskName)
+}
