@@ -72,7 +72,7 @@ func (p *PostgresDriver) addTask(taskData TaskInit) error {
 	_, err = p.db.Exec(`
 INSERT INTO `+p.schemaTable()+`
 	(`+p.primaryKey()+`, data, state, task_key, task_name, created_at, last_attempted, last_attempt_message, do_after, created_by)
-VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'Created', $7, $8)`,
+VALUES (`+p.schemaName+`.gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'Created', $7, $8)`,
 		dataString,
 		"READY",
 		taskData.Key,
