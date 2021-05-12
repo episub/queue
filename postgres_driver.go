@@ -70,6 +70,7 @@ func (p *PostgresDriver) addTask(taskData TaskInit) error {
 	created := time.Now()
 	// Convert
 	_, err = p.db.Exec(`
+SET search_path = `+p.schemaName+`;
 INSERT INTO `+p.schemaTable()+`
 	(`+p.primaryKey()+`, data, state, task_key, task_name, created_at, last_attempted, last_attempt_message, do_after, created_by)
 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'Created', $7, $8)`,
