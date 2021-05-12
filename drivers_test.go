@@ -146,7 +146,7 @@ func TestCountTask(t *testing.T) {
 			t.Error(err)
 		}
 
-		err = d.complete(task, "test done")
+		err = d.fail(task, "test fail")
 		if err != nil {
 			t.Error(err)
 		}

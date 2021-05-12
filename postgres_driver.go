@@ -167,7 +167,7 @@ func (p *PostgresDriver) getQueueLength() (int64, error) {
 func (p *PostgresDriver) getTaskCount(taskName string) (int64, error) {
 	var length int64
 
-	err := p.db.QueryRow("SELECT count(*) FROM "+p.schemaTable()+" WHERE task_name = $1 AND state != 'CANCELLED' AND state != 'DONE'", taskName).Scan(&length)
+	err := p.db.QueryRow("SELECT count(*) FROM "+p.schemaTable()+" WHERE task_name = $1 AND state != 'CANCELLED' AND state != 'DONE' AND state != 'FAILED'", taskName).Scan(&length)
 
 	return length, err
 }
