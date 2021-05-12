@@ -17,8 +17,9 @@ func init() {
 	dbConn := os.Getenv("PG_CONNSTRING")
 	dbSchema := os.Getenv("PG_SCHEMA")
 	dbTable := os.Getenv("PG_TABLE")
+	dbUuidSchema := os.Getenv("PG_UUID_SCHEMA")
 
-	mDriver, err := NewPostgresDriver(dbConn, dbSchema, dbTable)
+	mDriver, err := NewPostgresDriver(dbConn, dbSchema, dbTable, dbUuidSchema)
 
 	if err != nil {
 		panic(err)

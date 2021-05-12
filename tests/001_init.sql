@@ -1,3 +1,5 @@
+CREATE EXTENSION pgcrypto SCHEMA public;
+
 CREATE TABLE public.message_queue
 (
     message_queue_id     uuid        NOT NULL DEFAULT gen_random_uuid(),

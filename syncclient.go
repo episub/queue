@@ -13,12 +13,12 @@ func NewSyncClient(driver Driver) SyncClient {
 }
 
 // AddTask Adds a task to the queue
-func (s *SyncClient) AddTask(taskName string, taskKey string, doAfter time.Time, data map[string]interface{}) error {
+func (s *SyncClient) AddTask(taskName string, taskKey string, doAfter time.Time, createdBy string, data map[string]interface{}) error {
 	return s.driver.addTask(TaskInit{
 		Key:       taskKey,
 		Name:      taskName,
 		DoAfter:   doAfter,
-		CreatedBy: "test_runner",
+		CreatedBy: createdBy,
 		Data:      data,
 	})
 }

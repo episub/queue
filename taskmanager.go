@@ -16,12 +16,12 @@ type TaskManager struct {
 }
 
 // AddTask Add a task to the queue
-func (tm *TaskManager) AddTask(taskName string, taskKey string, doAfter time.Time, data map[string]interface{}) error {
+func (tm *TaskManager) AddTask(taskName string, taskKey string, doAfter time.Time, createdBy string, data map[string]interface{}) error {
 	return tm.driver.addTask(TaskInit{
 		Key:       taskKey,
 		Name:      taskName,
 		DoAfter:   doAfter,
-		CreatedBy: "test_runner",
+		CreatedBy: createdBy,
 		Data:      data,
 	})
 }

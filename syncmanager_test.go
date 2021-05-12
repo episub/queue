@@ -119,7 +119,7 @@ func TestRunTaskAction(t *testing.T) {
 		taskKey := hashKey(taskName + "1")
 		data := map[string]interface{}{}
 
-		err = tm.AddTask(taskName, taskKey, time.Now(), data)
+		err = tm.AddTask(taskName, taskKey, time.Now(), "test_created_by", data)
 
 		if err != nil {
 			t.Error(err)

@@ -23,3 +23,4 @@ tasks:
       PG_CONNSTRING: "user=postgres host=localhost sslmode=disable dbname=postgres"
       PG_SCHEMA: public
       PG_TABLE: message_queue
+      PG_UUID_SCHEMA: public

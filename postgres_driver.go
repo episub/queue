@@ -11,9 +11,10 @@ import (
 
 // PostgresDriver PostgreSQL Driver
 type PostgresDriver struct {
-	tableName  string
-	schemaName string
-	db         *sql.DB
+	tableName     string
+	schemaName    string
+	uuidGenSchema string
+	db            *sql.DB
 }
 
 // schemaTable returns appropriate table+schema name
@@ -26,12 +27,13 @@ func (p PostgresDriver) schemaTable() string {
 }
 
 // NewPostgresDriver Returns a new postgres driver, initialised.  readTimeout is in seconds
-func NewPostgresDriver(connString string, dbSchema string, dbTable string) (*PostgresDriver, error) {
+func NewPostgresDriver(connString string, dbSchema string, dbTable string, uuidGenSchema string) (*PostgresDriver, error) {
 	var err error
 
 	p := &PostgresDriver{
-		tableName:  dbTable,
-		schemaName: dbSchema,
+		tableName:     dbTable,
+		schemaName:    dbSchema,
+		uuidGenSchema: uuidGenSchema,
 	}
 
 	p.db, err = sql.Open("postgres", connString)
@@ -72,7 +74,7 @@ func (p *PostgresDriver) addTask(taskData TaskInit) error {
 	_, err = p.db.Exec(`
 INSERT INTO `+p.schemaTable()+`
 	(`+p.primaryKey()+`, data, state, task_key, task_name, created_at, last_attempted, last_attempt_message, do_after, created_by)
-VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'Created', $7, $8)`,
+VALUES (`+p.uuidGenSchema+`.gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'Created', $7, $8)`,
 		dataString,
 		"READY",
 		taskData.Key,
