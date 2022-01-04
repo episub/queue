@@ -37,6 +37,7 @@ type Task struct {
 	CreatedBy  string
 	State      TaskState
 	Data       map[string]interface{} // Storage of information that the action handler can use
+	RawData    []byte                 // The data before it's been unmarshalled
 	tx         *sql.Tx                // Can be used by drivers to store an open transaction.  Useful when using, e.g., skip locked
 	driverNote interface{}            // General storage for a driver to put a note or anything in
 }

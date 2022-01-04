@@ -69,12 +69,20 @@ func (p *PostgresDriver) addTask(taskData TaskInit) error {
 	// Store data as json:
 	dataString, err := json.Marshal(taskData.Data)
 
+	if err != nil {
+		return err
+	}
+
 	created := time.Now()
+	var uuidGen = "gen_random_uuid()"
+	if len(p.uuidGenSchema) > 0 {
+		uuidGen = p.uuidGenSchema + "." + uuidGen
+	}
 	// Convert
 	_, err = p.db.Exec(`
 INSERT INTO `+p.schemaTable()+`
 	(`+p.primaryKey()+`, data, state, task_key, task_name, created_at, last_attempted, last_attempt_message, do_after, created_by)
-VALUES (`+p.uuidGenSchema+`.gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'Created', $7, $8)`,
+VALUES (`+uuidGen+`, $1, $2, $3, $4, $5, $6, 'Created', $7, $8)`,
 		dataString,
 		"READY",
 		taskData.Key,
@@ -146,6 +154,8 @@ RETURNING ` + p.taskQueryColumns()
 		tx.Commit()
 	}
 
+	task.RawData = []byte(data)
+
 	return task, err
 }
 
@@ -190,7 +200,7 @@ func (p *PostgresDriver) retry(task Task, message string) error {
 
 func (p *PostgresDriver) setTaskState(task Task, state TaskState, message string) error {
 	if task.tx == nil {
-		return fmt.Errorf("Cannot have nil transaction for task")
+		return fmt.Errorf("cannot have nil transaction for task")
 	}
 	_, err := task.tx.Exec("UPDATE "+p.schemaTable()+" SET state=$1, last_attempted=$2, last_attempt_message=$3 WHERE "+p.primaryKey()+" = $4", string(state), time.Now(), message, task.id)
 
