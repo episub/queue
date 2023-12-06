@@ -22,6 +22,7 @@ type EmailPayload struct {
 	TextBody     string       `json:"text_body"`
 	ToEmail      string       `json:"to_email"`
 	ToName       string       `json:"to_name"`
+	CCEmails     []Email      `json:"cc_emails"`
 }
 
 // Attachment For email, data should be base64 encoded
@@ -29,6 +30,11 @@ type Attachment struct {
 	Data     string
 	Filename string
 	Type     string
+}
+
+type Email struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
 
 // EmailSendgridAction Handler for emails in message queue
@@ -58,6 +64,13 @@ func (a EmailSendgridAction) Do(task Task) (TaskResult, string) {
 	to := mail.NewEmail(p.ToName, p.ToEmail)
 
 	m := mail.NewSingleEmail(from, p.Subject, to, p.TextBody, p.HTMLBody)
+
+	if len(m.Personalizations) > 0 {
+		for _, cc := range p.CCEmails {
+			ccEmail := mail.NewEmail(strings.TrimSpace(cc.Name), strings.TrimSpace(cc.Email))
+			m.Personalizations[0].AddCCs(ccEmail)
+		}
+	}
 
 	if a.BccEmail != nil && len(*a.BccEmail) > 0 && len(m.Personalizations) > 0 && strings.TrimSpace(*a.BccEmail) != strings.TrimSpace(to.Address) {
 		bccTo := mail.NewEmail("", *a.BccEmail)
