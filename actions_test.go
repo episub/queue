@@ -1,7 +1,7 @@
 package queue
 
-func NewExampleScheduledAction(result chan bool) ExampleScheduledAction {
-	ea := ExampleScheduledAction{}
+func NewExampleScheduledAction(result chan bool, panicCount int) ExampleScheduledAction {
+	ea := ExampleScheduledAction{panicCount: panicCount}
 
 	ea.result = result
 
@@ -9,10 +9,15 @@ func NewExampleScheduledAction(result chan bool) ExampleScheduledAction {
 }
 
 type ExampleScheduledAction struct {
-	result chan bool
+	result     chan bool
+	panicCount int
 }
 
 func (ea *ExampleScheduledAction) Do() error {
+	if ea.panicCount > 0 {
+		ea.panicCount--
+		panic("failing here")
+	}
 	ea.result <- true
 	return nil
 

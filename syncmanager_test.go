@@ -72,7 +72,7 @@ func TestRunScheduledAction(t *testing.T) {
 	sm.Stop()
 
 	results := make(chan bool, 10)
-	ea := NewExampleScheduledAction(results)
+	ea := NewExampleScheduledAction(results, 0)
 
 	sm.Schedule(&ea, time.Millisecond*250)
 
@@ -89,6 +89,36 @@ func TestRunScheduledAction(t *testing.T) {
 
 	if diff.Seconds() < 0.75 || diff.Seconds() > 1.25 {
 		t.Errorf("Scheduled time should take around 1 second but took %0.2f", diff.Seconds())
+	}
+}
+
+func TestRunScheduledPanicAction(t *testing.T) {
+	// Test that scheduled action runs
+	sm := NewSyncManager(drivers[0])
+
+	go func() {
+		sm.Run()
+	}()
+	sm.Stop()
+
+	results := make(chan bool, 10)
+	ea := NewExampleScheduledAction(results, 1)
+
+	sm.Schedule(&ea, time.Millisecond*250)
+
+	started := time.Now()
+	// Gather four results:
+	count := 0
+
+	for count < 4 {
+		<-results
+		count++
+	}
+
+	diff := time.Since(started)
+
+	if diff.Seconds() < 1.00 || diff.Seconds() > 1.50 {
+		t.Errorf("Scheduled time should take around 1.25 seconds but took %0.2f", diff.Seconds())
 	}
 }
 

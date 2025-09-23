@@ -133,10 +133,18 @@ func (s *SyncManager) runStream(stream chan ScheduledAction) {
 		for {
 			select {
 			case action := <-stream:
-				err := action.Do()
-				if err != nil {
-					s.errorHandler(err)
-				}
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							err := fmt.Errorf("panic occurred in action.Do(): %v", r)
+							s.errorHandler(err)
+						}
+					}()
+					err := action.Do()
+					if err != nil {
+						s.errorHandler(err)
+					}
+				}()
 			}
 		}
 	}()
