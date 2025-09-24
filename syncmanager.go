@@ -136,7 +136,7 @@ func (s *SyncManager) runStream(stream chan ScheduledAction) {
 				func() {
 					defer func() {
 						if r := recover(); r != nil {
-							err := fmt.Errorf("panic occurred in action.Do(): %v", r)
+							err := fmt.Errorf("panic occurred in action.Do() (type: %T): %v", action, r)
 							s.errorHandler(err)
 						}
 					}()
